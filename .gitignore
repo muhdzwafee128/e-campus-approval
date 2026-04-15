@@ -1,0 +1,33 @@
+# Node modules
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# # Environment variables
+# .env
+# server/.env
+# client/.env
+
+# Build files
+dist/
+build/
+client/dist/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Uploads (optional - depends)
+server/uploads/
+
+# PDF generated files (optional)
+server/pdfs/
