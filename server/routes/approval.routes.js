@@ -1,0 +1,165 @@
+const express = require('express');
+const router = express.Router();
+const Request = require('../models/Request.model');
+const ApprovalStep = require('../models/ApprovalStep.model');
+const Document = require('../models/Document.model');
+const User = require('../models/User.model');
+const AuditLog = require('../models/AuditLog.model');
+const { protect } = require('../middleware/auth.middleware');
+const { authorizeRoles } = require('../middleware/role.middleware');
+const { findNextAuthority } = require('../services/routing.service');
+const { generatePermissionLetterPDF } = require('../services/pdf.service');
+const { generateVerificationToken, generateQRCode } = require('../services/qr.service');
+
+const AUTHORITY_ROLES = ['tutor', 'nodal_officer', 'faculty_coordinator', 'hod', 'principal'];
+
+// POST /api/approvals/:requestId — approve or reject
+router.post('/:requestId', protect, authorizeRoles(...AUTHORITY_ROLES), async (req, res) => {
+    try {
+        const { action, comment } = req.body; // action: 'approved' | 'rejected'
+        if (!['approved', 'rejected'].includes(action)) {
+            return res.status(400).json({ message: 'Action must be "approved" or "rejected"' });
+        }
+        if (action === 'rejected' && !comment?.trim()) {
+            return res.status(400).json({ message: 'Rejection reason is required' });
+        }
+
+        const request = await Request.findById(req.params.requestId)
+            .populate('studentId', 'name admissionNo department yearOfStudy yearOfAdmission category dateOfBirth parentName email');
+        if (!request) return res.status(404).json({ message: 'Request not found' });
+
+        // Verify this authority is the current holder
+        if (request.currentHolder?.toString() !== req.user.id) {
+            return res.status(403).json({ message: 'This request is not assigned to you' });
+        }
+
+        const currentRole = request.approvalChain[request.currentStep];
+
+        // Update the approval step
+        await ApprovalStep.findOneAndUpdate(
+            { requestId: request._id, role: currentRole, action: 'pending' },
+            { action, comment: comment || '', authorityId: req.user.id, timestamp: new Date() }
+        );
+
+        await AuditLog.create({
+            event: action === 'approved' ? 'REQUEST_APPROVED' : 'REQUEST_REJECTED',
+            userId: req.user.id,
+            requestId: request._id,
+            meta: { role: currentRole, comment },
+        });
+
+        const io = req.app.get('io');
+
+        if (action === 'rejected') {
+            request.status = 'rejected';
+            request.currentHolder = null;
+            await request.save();
+
+            // Notify student
+            if (io) io.to(request.studentId._id.toString()).emit('request_update', {
+                requestId: request.requestId, status: 'rejected', rejectedBy: req.user.name, comment,
+            });
+            return res.json({ message: 'Request rejected', request });
+        }
+
+        // Approved — advance to next step
+        const nextStep = request.currentStep + 1;
+        if (nextStep >= request.approvalChain.length) {
+            // FINAL APPROVAL — generate PDF
+            request.status = 'approved';
+            request.currentHolder = null;
+            request.currentStep = nextStep;
+            await request.save();
+
+            // Generate PDF
+            const allSteps = await ApprovalStep.find({ requestId: request._id })
+                .populate('authorityId', 'name role signatureUrl');
+
+            const token = generateVerificationToken(request._id);
+            const absPdfPath = await generatePermissionLetterPDF(
+                request,
+                request.studentId,
+                allSteps,
+                token
+            );
+
+            // Store only the relative path (e.g. pdfs/REQ-xxx.pdf) so the
+            // download route can resolve it correctly on any machine.
+            const relPdfPath = `pdfs/${require('path').basename(absPdfPath)}`;
+
+            await Document.create({
+                requestId: request._id,
+                pdfPath: relPdfPath,
+                verificationToken: token,
+            });
+
+            await AuditLog.create({
+                event: 'PDF_GENERATED',
+                userId: req.user.id,
+                requestId: request._id,
+                meta: { pdfPath: relPdfPath },
+            });
+
+            if (io) io.to(request.studentId._id.toString()).emit('request_update', {
+                requestId: request.requestId, status: 'approved',
+            });
+
+            return res.json({ message: 'Final approval — PDF generated', request });
+        }
+
+        // Advance to next authority
+        request.currentStep = nextStep;
+        request.status = 'in_progress';
+
+        // Find next authority
+        const tempRequest = { ...request.toObject(), currentStep: nextStep };
+        const nextAuthority = await findNextAuthority(
+            { approvalChain: request.approvalChain, currentStep: nextStep, formData: request.formData },
+            User
+        );
+        request.currentHolder = nextAuthority?._id || null;
+        await request.save();
+
+        // Notify next authority
+        if (io && nextAuthority) {
+            io.to(nextAuthority._id.toString()).emit('new_request', {
+                requestId: request.requestId, type: request.type,
+                studentName: request.studentId.name,
+            });
+        }
+
+        res.json({ message: `Approved — forwarded to ${request.approvalChain[nextStep]}`, request });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// GET /api/approvals/history — authority's past actions
+router.get('/history/mine', protect, authorizeRoles(...AUTHORITY_ROLES), async (req, res) => {
+    try {
+        const steps = await ApprovalStep.find({ authorityId: req.user.id, action: { $ne: 'pending' } })
+            .populate({
+                path: 'requestId',
+                populate: { path: 'studentId', select: 'name admissionNo department yearOfStudy' },
+            })
+            .sort({ timestamp: -1 })
+            .limit(50);
+        res.json(steps);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// GET /api/approvals/stats — authority's stats
+router.get('/stats/mine', protect, authorizeRoles(...AUTHORITY_ROLES), async (req, res) => {
+    try {
+        const pending = await Request.countDocuments({ currentHolder: req.user.id });
+        const approved = await ApprovalStep.countDocuments({ authorityId: req.user.id, action: 'approved' });
+        const rejected = await ApprovalStep.countDocuments({ authorityId: req.user.id, action: 'rejected' });
+        res.json({ pending, approved, rejected });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+module.exports = router;
