@@ -33,8 +33,11 @@ const requestSchema = new mongoose.Schema(
         currentStep: { type: Number, default: 0 }, // index into approvalChain
         currentHolder: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // user assigned now
 
-        // Uploaded file paths (from Multer)
+        // Uploaded file paths / Cloudinary URLs (from Multer)
         attachments: { type: [String], default: [] },
+
+        // Cloudinary URL of the final approved permission-letter PDF
+        approvalLetterUrl: { type: String, default: '' },
 
         // Unique readable ID
         requestId: { type: String, unique: true },
