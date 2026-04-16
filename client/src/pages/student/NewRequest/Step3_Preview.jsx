@@ -43,7 +43,7 @@ function previewChain(type, formData) {
     return ['tutor'];
 }
 
-export default function Step3_Preview({ type, formData, onBack, onSubmit, submitting }) {
+export default function Step3_Preview({ type, formData, files = [], onBack, onSubmit, submitting }) {
     const chain = previewChain(type, formData);
 
     return (
@@ -67,6 +67,50 @@ export default function Step3_Preview({ type, formData, onBack, onSubmit, submit
                             </div>
                         );
                     })}
+                </div>
+
+                {/* ── Attached Documents row ── */}
+                <div style={{
+                    gridColumn: '1 / -1',
+                    paddingBottom: 10,
+                    borderBottom: '1px solid var(--border)',
+                    marginTop: 4,
+                }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase', marginBottom: 6 }}>
+                        Attached Documents
+                    </div>
+                    {files.length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {files.map((file, idx) => (
+                                <span
+                                    key={idx}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 5,
+                                        background: '#EFF6FF',
+                                        color: 'var(--navy)',
+                                        border: '1px solid #BFDBFE',
+                                        borderRadius: 6,
+                                        padding: '3px 10px',
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        maxWidth: 260,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                    title={file.name}
+                                >
+                                    📎 {file.name}
+                                </span>
+                            ))}
+                        </div>
+                    ) : (
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                            No file attached
+                        </div>
+                    )}
                 </div>
             </div>
 

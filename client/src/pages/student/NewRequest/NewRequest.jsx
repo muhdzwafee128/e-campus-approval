@@ -75,6 +75,7 @@ export default function NewRequest() {
                 <Step3_Preview
                     type={selectedType}
                     formData={formData}
+                    files={files}
                     onBack={() => setStep(2)}
                     onSubmit={handleSubmit}
                     submitting={submitting}

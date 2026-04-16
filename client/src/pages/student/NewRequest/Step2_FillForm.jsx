@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Upload } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Upload, Paperclip, X } from 'lucide-react';
 
 const DEPTS = ['CS1', 'CS2', 'IT', 'ECE', 'EEE', 'MECH', 'CIVIL', 'ECS'];
 const CLUBS = ['IEDC', 'IEEE', 'TinkerHub', 'MuLearn', 'NSS', 'NCC', 'Other'];
@@ -76,20 +76,121 @@ function FG({ label, children, required }) {
     );
 }
 
-function FileField({ label, onChange, multiple, helper }) {
+function FileField({ label, onChange, multiple, helper, required: req = true }) {
+    const [selectedFiles, setSelectedFiles] = useState([]);
+    const inputRef = useRef(null);
+
+    const handleChange = (e) => {
+        const picked = Array.from(e.target.files);
+        if (!picked.length) return;
+        const next = multiple ? [...selectedFiles, ...picked] : picked;
+        setSelectedFiles(next);
+        onChange(next);
+    };
+
+    const removeFile = (idx) => {
+        const next = selectedFiles.filter((_, i) => i !== idx);
+        setSelectedFiles(next);
+        onChange(next);
+        // Reset the hidden input so the same file can be re-selected
+        if (inputRef.current) inputRef.current.value = '';
+    };
+
     return (
-        <FG label={label} required>
-            <div style={{ border: '1px dashed var(--border)', borderRadius: 8, padding: '14px 16px', background: 'var(--bg)' }}>
-                <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
+        <FG label={label} required={req}>
+            {/* Drop zone / click-to-upload trigger */}
+            <div
+                style={{
+                    border: `1px dashed ${selectedFiles.length ? 'var(--navy)' : 'var(--border)'}`,
+                    borderRadius: 8,
+                    padding: '14px 16px',
+                    background: selectedFiles.length ? 'rgba(10,36,99,0.04)' : 'var(--bg)',
+                    transition: 'border-color 0.2s, background 0.2s',
+                }}
+            >
+                <label
+                    style={{
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        fontSize: 13,
+                        color: 'var(--text-secondary)',
+                    }}
+                >
                     <Upload size={16} />
-                    Click to upload {multiple ? 'files' : 'a file'}
-                    <input type="file" multiple={multiple} style={{ display: 'none' }} onChange={e => onChange(Array.from(e.target.files))} />
+                    {selectedFiles.length
+                        ? `Add ${multiple ? 'more files' : 'a different file'}`
+                        : `Click to upload ${multiple ? 'files' : 'a file'}`}
+                    <input
+                        ref={inputRef}
+                        type="file"
+                        multiple={multiple}
+                        style={{ display: 'none' }}
+                        onChange={handleChange}
+                    />
                 </label>
                 {helper && <div className="form-helper">{helper}</div>}
+
+                {/* Selected file list */}
+                {selectedFiles.length > 0 && (
+                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {selectedFiles.map((file, idx) => (
+                            <div
+                                key={idx}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    background: 'var(--bg)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 6,
+                                    padding: '5px 10px',
+                                    fontSize: 12,
+                                }}
+                            >
+                                <Paperclip size={12} color="var(--navy)" style={{ flexShrink: 0 }} />
+                                <span
+                                    style={{
+                                        flex: 1,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        color: 'var(--text)',
+                                        fontWeight: 500,
+                                    }}
+                                >
+                                    {file.name}
+                                </span>
+                                <span style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                                    {(file.size / 1024).toFixed(0)} KB
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => removeFile(idx)}
+                                    title="Remove file"
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        padding: 2,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        color: '#e53e3e',
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </FG>
     );
 }
+
 
 function DutyLeaveUploadForm({ fd, set, onFiles }) {
     return (
@@ -154,8 +255,8 @@ function DutyLeaveEventForm({ fd, set, onFiles }) {
             <FG label="Purpose / Description" required>
                 <textarea className="form-textarea" rows={3} value={fd.purpose || ''} onChange={e => set('purpose', e.target.value)} required />
             </FG>
-            <FileField label="Upload Student Attendance List" multiple onChange={f => { onFiles(f); set('attachments', f.map(x => x.name)); }} helper="PDF, Image, or Excel (.xlsx)" />
-            <FileField label="Supporting Documents (Optional)" multiple onChange={() => { }} helper="Invitation letter, brochure, sanction letter" />
+            <FileField label="Upload Student Attendance List" multiple onChange={onFiles} helper="PDF, Image, or Excel (.xlsx)" />
+            <FileField label="Supporting Documents (Optional)" multiple onChange={onFiles} helper="Invitation letter, brochure, sanction letter" required={false} />
         </>
     );
 }
