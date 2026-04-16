@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const Request = require('../models/Request.model');
 const ApprovalStep = require('../models/ApprovalStep.model');
 const User = require('../models/User.model');
@@ -10,19 +8,14 @@ const AuditLog = require('../models/AuditLog.model');
 const { protect } = require('../middleware/auth.middleware');
 const { authorizeRoles } = require('../middleware/role.middleware');
 const { determineApprovalChain, findNextAuthority } = require('../services/routing.service');
+const { attachmentsStorage } = require('../config/cloudinary');
 
-// Multer for student file uploads
-const attachStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = path.join(__dirname, '..', 'uploads', 'attachments');
-        fs.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, `${Date.now()}_${file.originalname}`);
-    },
+// Multer — streams student attachments directly to Cloudinary 'attachments' folder
+// Supports images, PDFs, and DOCX (resource_type: 'auto' handles non-image formats)
+const upload = multer({
+    storage: attachmentsStorage,
+    limits: { fileSize: 10 * 1024 * 1024 },
 });
-const upload = multer({ storage: attachStorage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 // POST /api/requests — submit a new request (student only)
 router.post('/', protect, authorizeRoles('student'), upload.array('files', 10), async (req, res) => {
@@ -46,7 +39,9 @@ router.post('/', protect, authorizeRoles('student'), upload.array('files', 10), 
             approvalChain,
             currentStep: 0,
             status: 'pending',
-            attachments: req.files ? req.files.map(f => `/uploads/attachments/${f.filename}`) : [],
+            // Each uploaded file's Cloudinary secure_url is stored.
+            // multer-storage-cloudinary sets req.file.path to the secure_url.
+            attachments: req.files ? req.files.map(f => f.path) : [],
         });
 
         // Find first authority
