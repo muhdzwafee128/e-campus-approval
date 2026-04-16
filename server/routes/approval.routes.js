@@ -76,20 +76,22 @@ router.post('/:requestId', protect, authorizeRoles(...AUTHORITY_ROLES), async (r
                 .populate('authorityId', 'name role signatureUrl');
 
             const token = generateVerificationToken(request._id);
-            const absPdfPath = await generatePermissionLetterPDF(
+            // generatePermissionLetterPDF now returns a Cloudinary HTTPS URL
+            const pdfUrl = await generatePermissionLetterPDF(
                 request,
                 request.studentId,
                 allSteps,
                 token
             );
 
-            // Store only the relative path (e.g. pdfs/REQ-xxx.pdf) so the
-            // download route can resolve it correctly on any machine.
-            const relPdfPath = `pdfs/${require('path').basename(absPdfPath)}`;
+            // Persist Cloudinary URL on the request itself for easy client access
+            request.approvalLetterUrl = pdfUrl;
+            await request.save();
 
             await Document.create({
                 requestId: request._id,
-                pdfPath: relPdfPath,
+                pdfUrl,          // Cloudinary HTTPS URL (primary)
+                pdfPath: '',     // no longer used for new documents
                 verificationToken: token,
             });
 
@@ -97,7 +99,7 @@ router.post('/:requestId', protect, authorizeRoles(...AUTHORITY_ROLES), async (r
                 event: 'PDF_GENERATED',
                 userId: req.user.id,
                 requestId: request._id,
-                meta: { pdfPath: relPdfPath },
+                meta: { pdfUrl },
             });
 
             if (io) io.to(request.studentId._id.toString()).emit('request_update', {

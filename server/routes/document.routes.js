@@ -1,7 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
-const fs = require('fs');
 const Document = require('../models/Document.model');
 const Request = require('../models/Request.model');
 const ApprovalStep = require('../models/ApprovalStep.model');
@@ -14,30 +12,37 @@ router.get('/download/:requestId', protect, async (req, res) => {
         const request = await Request.findById(req.params.requestId);
         if (!request) return res.status(404).json({ message: 'Request not found' });
 
-        // Only the student who owns it can download
+        // Only the student who owns it (or any authority) can download
         if (req.user.role === 'student' && request.studentId.toString() !== req.user.id) {
             return res.status(403).json({ message: 'Access denied' });
         }
 
-        const doc = await Document.findOne({ requestId: request._id });
-
-        let absPath;
-        if (doc) {
-            absPath = path.join(__dirname, '..', doc.pdfPath);
-        } else {
-            // Fallback: serve directly from pdfs/ folder if the file exists
-            // (handles cases where the Document DB record was not created)
-            const fallbackPath = path.join(__dirname, '..', 'pdfs', `${request.requestId}.pdf`);
-            if (fs.existsSync(fallbackPath)) {
-                absPath = fallbackPath;
-            } else {
-                return res.status(404).json({ message: 'PDF not yet generated' });
-            }
+        // 1️⃣  Prefer the URL stored directly on the request (fastest path)
+        if (request.approvalLetterUrl) {
+            return res.redirect(request.approvalLetterUrl);
         }
 
-        if (!fs.existsSync(absPath)) return res.status(404).json({ message: 'PDF file not found' });
+        // 2️⃣  Fall back to the Document record
+        const doc = await Document.findOne({ requestId: request._id });
+        if (doc?.pdfUrl) {
+            return res.redirect(doc.pdfUrl);
+        }
 
-        res.download(absPath, `${request.requestId}.pdf`);
+        // 3️⃣  Legacy: serve from local disk (pre-Cloudinary documents)
+        const path = require('path');
+        const fs   = require('fs');
+        let absPath;
+        if (doc?.pdfPath) {
+            absPath = path.join(__dirname, '..', doc.pdfPath);
+        } else {
+            const fallback = path.join(__dirname, '..', 'pdfs', `${request.requestId}.pdf`);
+            if (fs.existsSync(fallback)) absPath = fallback;
+        }
+        if (absPath && fs.existsSync(absPath)) {
+            return res.download(absPath, `${request.requestId}.pdf`);
+        }
+
+        res.status(404).json({ message: 'PDF not yet generated' });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
