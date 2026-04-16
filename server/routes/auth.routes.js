@@ -3,27 +3,16 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const User = require('../models/User.model');
+const { signaturesStorage } = require('../config/cloudinary');
 
-// Multer config for signature uploads
-const sigStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = path.join(__dirname, '..', 'uploads', 'signatures');
-        fs.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, `sig_${Date.now()}${path.extname(file.originalname)}`);
-    },
-});
+// Multer — streams signature images directly to Cloudinary 'signatures' folder
 const uploadSignature = multer({
-    storage: sigStorage,
+    storage: signaturesStorage,
     limits: { fileSize: 2 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        if (['image/png', 'image/jpeg'].includes(file.mimetype)) cb(null, true);
-        else cb(new Error('Only PNG/JPG signatures allowed'));
+        if (['image/png', 'image/jpeg', 'image/webp'].includes(file.mimetype)) cb(null, true);
+        else cb(new Error('Only PNG/JPG/WEBP signatures allowed'));
     },
 });
 
@@ -79,20 +68,13 @@ router.post('/register/authority', uploadSignature.single('signature'), async (r
             return res.status(400).json({ message: 'Email already registered' });
         }
 
-        // signatureUrl: from uploaded file OR from base64 body field (canvas draw)
+        // signatureUrl: Cloudinary secure_url from the uploaded file
+        // (multer-storage-cloudinary sets req.file.path to the secure_url)
         let signatureUrl = '';
         if (req.file) {
-            signatureUrl = `/uploads/signatures/${req.file.filename}`;
-        } else if (req.body.signatureBase64) {
-            // Save base64 canvas signature to file
-            const base64Data = req.body.signatureBase64.replace(/^data:image\/\w+;base64,/, '');
-            const sigDir = path.join(__dirname, '..', 'uploads', 'signatures');
-            fs.mkdirSync(sigDir, { recursive: true });
-            const filename = `sig_canvas_${Date.now()}.png`;
-            fs.writeFileSync(path.join(sigDir, filename), base64Data, 'base64');
-            signatureUrl = `/uploads/signatures/${filename}`;
+            signatureUrl = req.file.path; // Cloudinary secure_url
         } else {
-            return res.status(400).json({ message: 'Signature is required for authority registration' });
+            return res.status(400).json({ message: 'Signature image is required for authority registration' });
         }
 
         const passwordHash = await bcrypt.hash(password, 12);
@@ -137,6 +119,36 @@ router.get('/me', require('../middleware/auth.middleware').protect, async (req, 
         res.status(500).json({ message: err.message });
     }
 });
+
+// PUT /api/auth/profile — update staff profile (name, signature)
+// Staff can upload a new signature image; Cloudinary replaces the old one.
+router.put(
+    '/profile',
+    require('../middleware/auth.middleware').protect,
+    uploadSignature.single('signature'),
+    async (req, res) => {
+        try {
+            const updates = {};
+
+            if (req.body.name) updates.name = req.body.name;
+
+            // New signature file uploaded → use Cloudinary secure_url
+            if (req.file) {
+                updates.signatureUrl = req.file.path;
+            }
+
+            const user = await User.findByIdAndUpdate(
+                req.user.id,
+                { $set: updates },
+                { new: true, runValidators: true }
+            ).select('-passwordHash');
+
+            res.json({ message: 'Profile updated', user });
+        } catch (err) {
+            res.status(500).json({ message: err.message });
+        }
+    }
+);
 
 function sanitize(user) {
     const u = user.toObject();

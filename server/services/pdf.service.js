@@ -1,10 +1,29 @@
 const puppeteer = require('puppeteer');
-const path = require('path');
-const fs = require('fs');
 const { generateQRCode } = require('./qr.service');
+const { cloudinary } = require('../config/cloudinary');
 
-const PDFS_DIR = path.join(__dirname, '..', 'pdfs');
-if (!fs.existsSync(PDFS_DIR)) fs.mkdirSync(PDFS_DIR, { recursive: true });
+/**
+ * Upload a PDF Buffer directly to Cloudinary under the 'permission_letters' folder.
+ * Returns the Cloudinary upload result (result.secure_url is the HTTPS URL).
+ */
+function uploadPdfToCloudinary(buffer, publicId) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'permission_letters',
+        public_id: publicId,
+        resource_type: 'raw', // PDFs must use resource_type 'raw'
+        format: 'pdf',
+        overwrite: true,
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    stream.end(buffer);
+  });
+}
 
 const ROLE_LABELS = {
   tutor: 'Group Tutor',
@@ -34,22 +53,12 @@ function buildSignatureBlocks(approvalSteps, chain) {
     const step = approvalSteps.find(s => s.role === role && s.action === 'approved');
     const label = ROLE_LABELS[role] || role;
 
-    // Read the signature file from disk and embed it as a Base64 data URI.
-    // This is the only reliable way — file:// URLs are blocked by Puppeteer's
-    // sandbox and relative web paths have no server to resolve them.
+    // Signatures are now Cloudinary HTTPS URLs — Puppeteer can fetch them directly.
+    // No disk reads needed anymore.
     let sigImg = '<div style="height:60px;border-bottom:1px solid #aaa;width:150px;"></div>';
     if (step?.authorityId?.signatureUrl) {
-      try {
-        const relPath = step.authorityId.signatureUrl.replace(/^\//, '');
-        const absPath = path.join(__dirname, '..', relPath);
-        const ext = path.extname(absPath).slice(1).toLowerCase() || 'png';
-        const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
-        const b64 = fs.readFileSync(absPath).toString('base64');
-        const dataUrl = `data:${mime};base64,${b64}`;
-        sigImg = `<img src="${dataUrl}" alt="signature" style="max-height:60px;max-width:150px;display:block;margin-bottom:4px;">`;
-      } catch (e) {
-        // File not found or unreadable — fall back to blank line
-      }
+      const url = step.authorityId.signatureUrl;
+      sigImg = `<img src="${url}" alt="signature" style="max-height:60px;max-width:150px;display:block;margin-bottom:4px;" crossorigin="anonymous">`;
     }
 
     return `
@@ -309,17 +318,18 @@ ${needsOfficeSection ? `
   const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   const page = await browser.newPage();
   await page.setContent(html, { waitUntil: 'networkidle0' });
-  const pdfFilename = `${request.requestId}.pdf`;
-  const pdfPath = path.join(PDFS_DIR, pdfFilename);
-  await page.pdf({
-    path: pdfPath,
+
+  // Generate PDF as a Buffer (no local path — goes straight to Cloudinary)
+  const pdfBuffer = await page.pdf({
     format: 'A4',
     printBackground: true,
     margin: { top: '0mm', bottom: '0mm', left: '0mm', right: '0mm' },
   });
   await browser.close();
 
-  return pdfPath;
+  // Upload buffer to Cloudinary and return the HTTPS secure_url
+  const result = await uploadPdfToCloudinary(pdfBuffer, request.requestId);
+  return result.secure_url;
 }
 
 module.exports = { generatePermissionLetterPDF };

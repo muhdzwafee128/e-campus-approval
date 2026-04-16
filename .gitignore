@@ -3,31 +3,45 @@ node_modules/
 client/node_modules/
 server/node_modules/
 
-# # Environment variables
-# .env
-# server/.env
-# client/.env
+# Environment variables — NEVER commit secrets
+.env
+server/.env
+client/.env
 
-# Build files
+# Build / dist files
 dist/
 build/
 client/dist/
 
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# IDE files
+# IDE / editor files
 .vscode/
 .idea/
+*.swp
+*.swo
 
-# Uploads (optional - depends)
+# ─── Local file storage (migrated to Cloudinary) ─────────────────────────────
+# All three folders below are now replaced by Cloudinary cloud storage.
+# Do NOT commit these — they are large, machine-specific, and redundant.
+
+# Student attachment uploads (images, PDFs, DOCX)
 server/uploads/
 
-# PDF generated files (optional)
+# Staff signature images
+server/uploads/signatures/
+
+# Generated permission-letter PDFs
 server/pdfs/
+
+# Legacy standalone signatures folder (if it exists)
+server/signatures/
