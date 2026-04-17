@@ -43,10 +43,17 @@ export default function ReviewRequest() {
             await api.post(`/approvals/${id}`, { action: act, comment });
             navigate('/authority/dashboard');
         } catch (err) {
+            // 403 means the approval already went through (e.g. PDF was generating)
+            // — navigate away instead of showing a confusing "not assigned" error
+            if (err.response?.status === 403) {
+                navigate('/authority/dashboard');
+                return;
+            }
             setError(err.response?.data?.message || 'Action failed');
             setSubmitting(false);
         }
     };
+
 
     if (loading) return <PageLayout><div className="spinner" /></PageLayout>;
     if (!data) return <PageLayout><div>Request not found</div></PageLayout>;

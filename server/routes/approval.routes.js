@@ -65,49 +65,57 @@ router.post('/:requestId', protect, authorizeRoles(...AUTHORITY_ROLES), async (r
         // Approved — advance to next step
         const nextStep = request.currentStep + 1;
         if (nextStep >= request.approvalChain.length) {
-            // FINAL APPROVAL — generate PDF
+            // FINAL APPROVAL — mark approved and respond immediately
             request.status = 'approved';
             request.currentHolder = null;
             request.currentStep = nextStep;
             await request.save();
 
-            // Generate PDF
-            const allSteps = await ApprovalStep.find({ requestId: request._id })
-                .populate('authorityId', 'name role signatureUrl');
-
-            const token = generateVerificationToken(request._id);
-            // generatePermissionLetterPDF now returns a Cloudinary HTTPS URL
-            const pdfUrl = await generatePermissionLetterPDF(
-                request,
-                request.studentId,
-                allSteps,
-                token
-            );
-
-            // Persist Cloudinary URL on the request itself for easy client access
-            request.approvalLetterUrl = pdfUrl;
-            await request.save();
-
-            await Document.create({
-                requestId: request._id,
-                pdfUrl,          // Cloudinary HTTPS URL (primary)
-                pdfPath: '',     // no longer used for new documents
-                verificationToken: token,
-            });
-
-            await AuditLog.create({
-                event: 'PDF_GENERATED',
-                userId: req.user.id,
-                requestId: request._id,
-                meta: { pdfUrl },
-            });
-
+            // Notify student immediately
             if (io) io.to(request.studentId._id.toString()).emit('request_update', {
                 requestId: request.requestId, status: 'approved',
             });
 
-            return res.json({ message: 'Final approval — PDF generated', request });
+            // Respond NOW so the authority UI can navigate away
+            res.json({ message: 'Final approval — PDF generating in background', request });
+
+            // Generate PDF asynchronously (non-blocking)
+            setImmediate(async () => {
+                try {
+                    const allSteps = await ApprovalStep.find({ requestId: request._id })
+                        .populate('authorityId', 'name role signatureUrl');
+
+                    const token = generateVerificationToken(request._id);
+                    const pdfUrl = await generatePermissionLetterPDF(
+                        request, request.studentId, allSteps, token
+                    );
+
+                    request.approvalLetterUrl = pdfUrl;
+                    await request.save();
+
+                    await Document.create({
+                        requestId: request._id,
+                        pdfUrl,
+                        pdfPath: '',
+                        verificationToken: token,
+                    });
+
+                    await AuditLog.create({
+                        event: 'PDF_GENERATED',
+                        userId: req.user.id,
+                        requestId: request._id,
+                        meta: { pdfUrl },
+                    });
+
+                    console.log(`PDF generated for request ${request.requestId}: ${pdfUrl}`);
+                } catch (err) {
+                    console.error(`PDF generation failed for request ${request.requestId}:`, err.message);
+                }
+            });
+
+            return; // response already sent
         }
+
 
         // Advance to next authority
         request.currentStep = nextStep;
