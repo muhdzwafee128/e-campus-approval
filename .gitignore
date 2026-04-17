@@ -44,4 +44,4 @@ server/uploads/signatures/
 server/pdfs/
 
 # Legacy standalone signatures folder (if it exists)
-server/signatures/
+server/signatures/
