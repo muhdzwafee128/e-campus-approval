@@ -48,7 +48,7 @@ export default function VerifyPage() {
                         <FileText size={20} color="white" />
                     </div>
                     <div>
-                        <div style={{ fontWeight: 700, fontSize: 16, color: '#1E293B' }}>E-Approval System</div>
+                        <div style={{ fontWeight: 700, fontSize: 16, color: '#1E293B' }}>E-Campus Approval</div>
                         <div style={{ fontSize: 12, color: '#64748B' }}>College of Engineering, Thalassery</div>
                     </div>
                 </div>

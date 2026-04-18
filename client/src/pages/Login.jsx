@@ -35,7 +35,7 @@ export default function Login() {
                         <FileText size={20} />
                     </div>
                     <div>
-                        <div style={{ fontWeight: 700, fontSize: 15 }}>E-Approval System</div>
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>E-Campus Approval</div>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>College of Engineering, Thalassery</div>
                     </div>
                 </div>

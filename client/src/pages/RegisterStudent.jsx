@@ -45,7 +45,7 @@ export default function RegisterStudent() {
         <div className="auth-page" style={{ alignItems: 'flex-start', paddingTop: 40 }}>
             <div className="auth-card" style={{ maxWidth: 600 }}>
                 <div className="auth-title">Student Registration</div>
-                <div className="auth-subtitle">Create your E-Approval System account</div>
+                <div className="auth-subtitle">Create your E-Campus Approval account</div>
                 {error && <div style={{ background: '#FEE2E2', color: '#991B1B', padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{error}</div>}
                 <form onSubmit={handleSubmit}>
                     <div className="form-grid-2">
