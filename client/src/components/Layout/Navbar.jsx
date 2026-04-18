@@ -1,6 +1,6 @@
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, NavLink } from 'react-router-dom';
-import { FileText, Bell, LogOut } from 'lucide-react';
+import { FileText, LogOut } from 'lucide-react';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -25,13 +25,13 @@ export default function Navbar() {
                     <FileText size={18} color="white" />
                 </div>
                 <div>
-                    <div className="navbar-brand-name">E-Approval System</div>
+                    <div className="navbar-brand-name">E-Campus Approval</div>
                     <div className="navbar-brand-sub">College of Engineering, Thalassery</div>
                 </div>
             </div>
 
             <div className="navbar-right">
-                <Bell size={18} color="rgba(255,255,255,0.7)" style={{ cursor: 'pointer' }} />
+
                 <div style={{ textAlign: 'right' }}>
                     <div className="navbar-user-name">{user?.name}</div>
                     <div className="navbar-role">{formatRole(user?.role)}</div>
