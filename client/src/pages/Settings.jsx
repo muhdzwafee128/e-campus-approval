@@ -9,7 +9,6 @@ export default function Settings() {
     const [sigMode, setSigMode] = useState('upload');
     const [sigFile, setSigFile] = useState(null);
     const [sigPreview, setSigPreview] = useState(user?.signatureUrl || '');
-    const [sigBase64, setSigBase64] = useState('');
     const [drawing, setDrawing] = useState(false);
     const canvasRef = useRef(null);
     const [saving, setSaving] = useState(false);
@@ -38,23 +37,34 @@ export default function Settings() {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        setSigBase64(''); setSigPreview('');
+        setSigFile(null); setSigPreview('');
     };
     const saveCanvas = () => {
-        const dataUrl = canvasRef.current.toDataURL('image/png');
-        setSigBase64(dataUrl); setSigPreview(dataUrl);
+        const canvas = canvasRef.current;
+        // Convert canvas to Blob → File so multer-cloudinary processes it as an upload
+        canvas.toBlob((blob) => {
+            if (!blob) return;
+            const file = new File([blob], 'signature-drawn.png', { type: 'image/png' });
+            setSigFile(file);
+            setSigPreview(URL.createObjectURL(blob));
+        }, 'image/png');
     };
 
     const handleSave = async () => {
+        if (!sigFile) { setMsg('Please upload or draw a signature first.'); return; }
         setSaving(true); setMsg('');
         try {
             const fd = new FormData();
-            if (sigFile) fd.append('signature', sigFile);
-            else if (sigBase64) fd.append('signatureBase64', sigBase64);
-            // For now just show success (update route can be added if needed)
-            setMsg('Settings saved successfully');
-        } catch {
-            setMsg('Save failed');
+            fd.append('signature', sigFile); // File object → processed by Cloudinary middleware
+            const res = await api.put('/auth/profile', fd);
+            // Update auth context so the UI reflects the new Cloudinary URL
+            const updatedUser = res.data.user;
+            login(localStorage.getItem('token'), updatedUser);
+            setSigPreview(updatedUser.signatureUrl || sigPreview);
+            setSigFile(null);
+            setMsg('Signature updated successfully!');
+        } catch (err) {
+            setMsg(err.response?.data?.message || 'Save failed');
         } finally {
             setSaving(false);
         }
