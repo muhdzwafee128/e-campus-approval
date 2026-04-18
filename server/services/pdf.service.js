@@ -307,7 +307,7 @@ ${needsOfficeSection ? `
   <div class="footer-text">
     <div><strong>Request ID:</strong> ${request.requestId}</div>
     <div><strong>Issued:</strong> ${formatDate(approvalDate)}</div>
-    <div><strong>Verify at:</strong> eapproval.cet.ac.in/verify/${request.requestId}</div>
+    <div><strong>Verify at:</strong> e-campus-approval.vercel.app/verify/${request.requestId}</div>
     <div style="margin-top:4px;">This is a digitally approved document. Scan the QR code to verify authenticity.</div>
   </div>
   <img class="qr-img" src="${qrDataUrl}" alt="QR Code">
