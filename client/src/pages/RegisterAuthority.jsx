@@ -14,7 +14,6 @@ export default function RegisterAuthority() {
     const [sigMode, setSigMode] = useState('upload'); // 'upload' | 'draw'
     const [sigFile, setSigFile] = useState(null);
     const [sigPreview, setSigPreview] = useState('');
-    const [sigBase64, setSigBase64] = useState('');
     const [drawing, setDrawing] = useState(false);
     const canvasRef = useRef(null);
     const [error, setError] = useState('');
@@ -29,7 +28,6 @@ export default function RegisterAuthority() {
         if (f) {
             setSigFile(f);
             setSigPreview(URL.createObjectURL(f));
-            setSigBase64('');
         }
     };
 
@@ -72,15 +70,19 @@ export default function RegisterAuthority() {
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        setSigBase64('');
+        setSigFile(null);
         setSigPreview('');
     };
 
     const saveSignature = () => {
         const canvas = canvasRef.current;
-        const dataUrl = canvas.toDataURL('image/png');
-        setSigBase64(dataUrl);
-        setSigPreview(dataUrl);
+        // Convert canvas to a Blob, then wrap in a File so Cloudinary middleware processes it
+        canvas.toBlob((blob) => {
+            if (!blob) return;
+            const file = new File([blob], 'signature-drawn.png', { type: 'image/png' });
+            setSigFile(file);
+            setSigPreview(URL.createObjectURL(blob));
+        }, 'image/png');
     };
 
     const toggleClub = (club) => {
@@ -96,15 +98,14 @@ export default function RegisterAuthority() {
         e.preventDefault();
         setError('');
         if (form.password !== form.confirmPassword) { setError('Passwords do not match'); return; }
-        if (!sigFile && !sigBase64) { setError('Signature is required'); return; }
+        if (!sigFile) { setError('Signature image is required for authority registration'); return; }
 
         const fd = new FormData();
         Object.entries(form).forEach(([k, v]) => {
             if (k === 'assignedClubs') fd.append(k, JSON.stringify(v));
             else fd.append(k, v);
         });
-        if (sigFile) fd.append('signature', sigFile);
-        else fd.append('signatureBase64', sigBase64);
+        fd.append('signature', sigFile); // Always a File object (uploaded or canvas-drawn)
 
         setLoading(true);
         try {
