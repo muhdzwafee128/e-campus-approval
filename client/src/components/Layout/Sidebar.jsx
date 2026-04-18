@@ -19,7 +19,7 @@ const authorityNav = [
     { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
     const { user } = useAuth();
     const navItems = user?.role === 'student' ? studentNav : authorityNav;
 
@@ -30,7 +30,7 @@ export default function Sidebar() {
             : formatRole(user?.role);
 
     return (
-        <aside className="sidebar">
+        <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
             <div className="sidebar-user">
                 <div className="sidebar-caption">Logged in as</div>
                 <div className="sidebar-name">{user?.name}</div>
@@ -41,6 +41,7 @@ export default function Sidebar() {
                     <NavLink
                         key={to}
                         to={to}
+                        onClick={onClose}
                         className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
                     >
                         <Icon size={16} />
