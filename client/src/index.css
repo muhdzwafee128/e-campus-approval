@@ -827,8 +827,9 @@ body {
   }
 
   .navbar-brand-sub,
-  .navbar-role {
-    display: none;
+  .navbar-role,
+  .navbar-brand-icon {
+    display: none !important;
   }
 
   .navbar-brand-name {
@@ -836,6 +837,6 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 140px;
+    max-width: 200px;
   }
 }

@@ -24,7 +24,7 @@ export default function Navbar({ onMenuClick }) {
                     onClick={onMenuClick}
                     style={{ marginRight: 12 }}
                 />
-                <div style={{
+                <div className="navbar-brand-icon" style={{
                     width: 36, height: 36, background: 'rgba(255,255,255,0.15)',
                     borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
