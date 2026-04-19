@@ -8,11 +8,9 @@
 const ROUTING_RULES = {
     duty_leave_upload: ['tutor'],
     duty_leave_dept: ['tutor', 'hod', 'principal'],
-    duty_leave_iedc: ['nodal_officer', 'principal'],
     duty_leave_club: ['faculty_coordinator', 'principal'],
     duty_leave_external: ['tutor', 'hod', 'principal'],
     scholarship: ['tutor', 'hod', 'principal'],
-    event_conduct_iedc: ['nodal_officer', 'principal'],
     event_conduct_club: ['faculty_coordinator', 'principal'],
     event_conduct_dept: ['hod', 'principal'],
     general_certificate: ['tutor', 'hod', 'principal'],
@@ -34,7 +32,6 @@ function determineApprovalChain(type, formData) {
         const community = (formData.communityName || '').toLowerCase();
 
         if (eventType === 'Community-Club') {
-            if (community === 'iedc') return ROUTING_RULES.duty_leave_iedc;
             return ROUTING_RULES.duty_leave_club;
         }
         if (eventType === 'Inter-college' || eventType === 'Other') {
@@ -47,7 +44,6 @@ function determineApprovalChain(type, formData) {
     // Event Conduct Permission — sub-type by organisation
     if (type === 'event_conduct') {
         const org = (formData.organisationName || '').toLowerCase();
-        if (org === 'iedc') return ROUTING_RULES.event_conduct_iedc;
         if (org === 'department') return ROUTING_RULES.event_conduct_dept;
         return ROUTING_RULES.event_conduct_club;
     }
@@ -68,7 +64,7 @@ async function findNextAuthority(request, User) {
 
     const role = chain[step];
 
-    // For faculty_coordinator and nodal_officer, match by assigned clubs/community if possible
+    // Match faculty_coordinator by assigned clubs/community
     if (role === 'faculty_coordinator') {
         const community = request.formData?.communityName || request.formData?.organisationName || '';
         const authority = await User.findOne({
@@ -76,12 +72,7 @@ async function findNextAuthority(request, User) {
             assignedClubs: { $regex: new RegExp(community, 'i') },
         });
         if (authority) return authority;
-        // Fallback: first available faculty coordinator
-        return User.findOne({ role: 'faculty_coordinator' });
-    }
-
-    if (role === 'nodal_officer') {
-        return User.findOne({ role: 'nodal_officer' });
+        throw new Error(`No Faculty Coordinator assigned for ${community || 'this club'}. Please contact admin.`);
     }
 
     if (role === 'hod') {

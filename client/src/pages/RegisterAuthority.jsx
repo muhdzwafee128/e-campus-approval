@@ -4,10 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import { Upload, PenTool } from 'lucide-react';
 
-const ROLES = ['tutor', 'nodal_officer', 'faculty_coordinator', 'hod', 'principal'];
-const ROLE_LABELS = { tutor: 'Class Tutor', nodal_officer: 'Nodal Officer', faculty_coordinator: 'Faculty Coordinator', hod: 'HOD', principal: 'Principal' };
+const ROLES = ['tutor', 'faculty_coordinator', 'hod', 'principal'];
+const ROLE_LABELS = { tutor: 'Class Tutor', faculty_coordinator: 'Faculty Coordinator', hod: 'HOD', principal: 'Principal' };
 const DEPTS = ['CS1', 'CS2', 'IT', 'ECE', 'EEE', 'MECH', 'CIVIL', 'ECS'];
-const CLUBS = ['IEEE', 'TinkerHub', 'MuLearn', 'NSS', 'NCC', 'Other'];
+const CLUBS = ['IEDC', 'IEEE', 'TinkerHub', 'MuLearn', 'NSS', 'NCC', 'Other'];
 
 export default function RegisterAuthority() {
     const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', role: '', department: '', staffId: '', assignedClubs: [], assignedYear: '' });

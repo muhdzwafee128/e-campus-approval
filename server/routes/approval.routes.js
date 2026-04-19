@@ -11,7 +11,7 @@ const { findNextAuthority } = require('../services/routing.service');
 const { generatePermissionLetterPDF } = require('../services/pdf.service');
 const { generateVerificationToken, generateQRCode } = require('../services/qr.service');
 
-const AUTHORITY_ROLES = ['tutor', 'nodal_officer', 'faculty_coordinator', 'hod', 'principal'];
+const AUTHORITY_ROLES = ['tutor', 'faculty_coordinator', 'hod', 'principal'];
 
 // POST /api/approvals/:requestId — approve or reject
 router.post('/:requestId', protect, authorizeRoles(...AUTHORITY_ROLES), async (req, res) => {
