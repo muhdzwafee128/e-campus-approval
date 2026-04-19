@@ -83,7 +83,7 @@ export default function StudentDashboard() {
                     <div className="empty-state">
                         <FileText size={48} className="empty-state-icon" style={{ margin: '0 auto 16px', color: 'var(--border)' }} />
                         <div className="empty-state-title">No requests yet</div>
-                        <div style={{ fontSize: 14 }}>Submit your first permission request to get started</div>
+                        <div style={{ fontSize: 14 }}>Submit your first request to get started</div>
                     </div>
                 ) : (
                     <div className="request-list">
