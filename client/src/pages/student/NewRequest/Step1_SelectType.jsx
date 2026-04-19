@@ -18,7 +18,7 @@ export default function Step1_SelectType({ selected, onSelect }) {
     return (
         <div>
             <div style={{ marginBottom: 16, fontSize: 14, color: 'var(--text-secondary)' }}>
-                Select the type of permission request you want to submit
+                Select the type of request you want to submit
             </div>
             <div className="type-cards-grid">
                 {REQUEST_TYPES.map(({ type, icon: Icon, title, sub, desc }) => (

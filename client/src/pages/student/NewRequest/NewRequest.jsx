@@ -35,7 +35,7 @@ export default function NewRequest() {
     return (
         <PageLayout>
             <div className="page-title">New Request</div>
-            <div className="page-subtitle">Submit a permission request</div>
+            <div className="page-subtitle">Submit a request</div>
 
             {/* Step progress bar */}
             <div className="step-bar" style={{ marginBottom: 28 }}>
