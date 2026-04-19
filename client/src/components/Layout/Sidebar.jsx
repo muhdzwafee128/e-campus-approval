@@ -56,7 +56,6 @@ export default function Sidebar({ isOpen, onClose }) {
 function formatRole(role) {
     const map = {
         tutor: 'Class Tutor',
-        nodal_officer: 'Nodal Officer',
         faculty_coordinator: 'Faculty Coordinator',
         hod: 'Head of Department',
         principal: 'Principal',

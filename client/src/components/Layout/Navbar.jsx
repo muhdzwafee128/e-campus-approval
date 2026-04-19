@@ -58,7 +58,6 @@ function formatRole(role) {
     const map = {
         student: 'Student',
         tutor: 'Class Tutor',
-        nodal_officer: 'Nodal Officer',
         faculty_coordinator: 'Faculty Coordinator',
         hod: 'Head of Department',
         principal: 'Principal',

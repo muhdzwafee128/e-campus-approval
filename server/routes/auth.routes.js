@@ -61,7 +61,7 @@ router.post('/register/authority', uploadSignature.single('signature'), async (r
     try {
         const { name, email, password, role, department, staffId, assignedClubs, assignedYear } = req.body;
 
-        if (!['tutor', 'nodal_officer', 'faculty_coordinator', 'hod', 'principal'].includes(role)) {
+        if (!['tutor', 'faculty_coordinator', 'hod', 'principal'].includes(role)) {
             return res.status(400).json({ message: 'Invalid authority role' });
         }
         if (await User.findOne({ email })) {

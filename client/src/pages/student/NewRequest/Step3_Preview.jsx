@@ -11,7 +11,6 @@ const TYPE_LABELS = {
 
 const CHAIN_LABELS = {
     tutor: 'Group Tutor',
-    nodal_officer: 'Nodal Officer',
     faculty_coordinator: 'Faculty In-charge',
     hod: 'Head of Department',
     principal: 'Principal',
@@ -24,7 +23,6 @@ function previewChain(type, formData) {
         const et = formData.eventType || '';
         const cm = (formData.communityName || '').toLowerCase();
         if (et === 'Community-Club') {
-            if (cm === 'iedc') return ['nodal_officer', 'principal'];
             return ['faculty_coordinator', 'principal'];
         }
         return ['tutor', 'hod', 'principal'];
@@ -32,7 +30,6 @@ function previewChain(type, formData) {
     if (type === 'scholarship') return ['tutor', 'hod', 'principal'];
     if (type === 'event_conduct') {
         const org = (formData.organisationName || '').toLowerCase();
-        if (org === 'iedc') return ['nodal_officer', 'principal'];
         if (org === 'department') return ['hod', 'principal'];
         return ['faculty_coordinator', 'principal'];
     }

@@ -46,7 +46,7 @@ function RoleRedirect() {
   return <Navigate to="/authority/dashboard" replace />;
 }
 
-const AUTHORITY_ROLES = ['tutor', 'nodal_officer', 'faculty_coordinator', 'hod', 'principal'];
+const AUTHORITY_ROLES = ['tutor', 'faculty_coordinator', 'hod', 'principal'];
 
 export default function App() {
   return (

@@ -16,7 +16,6 @@ const TYPE_LABELS = {
 
 const ROLE_LABELS = {
     tutor: 'Group Tutor',
-    nodal_officer: 'Nodal Officer',
     faculty_coordinator: 'Faculty In-charge',
     hod: 'Head of Department',
     principal: 'Principal',

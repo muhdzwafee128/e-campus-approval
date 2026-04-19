@@ -89,9 +89,9 @@ export default function MyRequests() {
 }
 
 function formatRole(role) {
-    const map = {
-        tutor: 'Tutor', nodal_officer: 'Nodal Officer',
+    const ROLE_MAP = {
+        tutor: 'Tutor',
         faculty_coordinator: 'Faculty Coordinator', hod: 'HOD', principal: 'Principal',
     };
-    return map[role] || role;
+    return ROLE_MAP[role] || role;
 }
