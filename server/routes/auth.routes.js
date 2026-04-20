@@ -150,6 +150,82 @@ router.put(
     }
 );
 
+// PATCH /api/auth/student/profile
+router.patch('/student/profile', require('../middleware/auth.middleware').protect, async (req, res) => {
+    try {
+        const {
+            name, admissionNo, department, yearOfStudy,
+            yearOfAdmission, category, typeOfAdmission, dateOfBirth,
+            parentName, isHostler, hostelName
+        } = req.body;
+
+        const user = await User.findById(req.user.id);
+        if (!user || user.role !== 'student') return res.status(403).json({ message: 'Only students can use this route' });
+
+        if (admissionNo && admissionNo !== user.admissionNo) {
+            if (await User.findOne({ admissionNo })) {
+                return res.status(400).json({ message: 'Admission number already registered' });
+            }
+        }
+
+        user.name = name || user.name;
+        user.admissionNo = admissionNo || user.admissionNo;
+        user.department = department || user.department;
+        user.yearOfStudy = yearOfStudy || user.yearOfStudy;
+        user.yearOfAdmission = yearOfAdmission || user.yearOfAdmission;
+        user.category = category || user.category;
+        user.typeOfAdmission = typeOfAdmission || user.typeOfAdmission;
+        user.dateOfBirth = dateOfBirth || user.dateOfBirth;
+        user.parentName = parentName || user.parentName;
+        user.isHostler = isHostler !== undefined ? isHostler : user.isHostler;
+        user.hostelName = user.isHostler ? hostelName : ''; // clean up if not hostler
+
+        await user.save();
+        res.json({ message: 'Profile updated', user: sanitize(user) });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// PATCH /api/auth/staff/profile
+router.patch('/staff/profile', require('../middleware/auth.middleware').protect, async (req, res) => {
+    try {
+        const { name, staffId, department, assignedClubs, assignedYear } = req.body;
+
+        const user = await User.findById(req.user.id);
+        if (!user || user.role === 'student') return res.status(403).json({ message: 'Only staff can use this route' });
+
+        if (staffId && staffId !== user.staffId) {
+            if (await User.findOne({ staffId })) {
+                return res.status(400).json({ message: 'Staff ID already registered' });
+            }
+        }
+
+        user.name = name || user.name;
+        user.staffId = staffId || user.staffId;
+        
+        if (user.role === 'tutor' || user.role === 'hod') {
+            user.department = department || user.department;
+        }
+        if (user.role === 'faculty_coordinator') {
+            try {
+                const parsedClubs = typeof assignedClubs === 'string' ? JSON.parse(assignedClubs) : assignedClubs;
+                user.assignedClubs = Array.isArray(parsedClubs) ? parsedClubs : user.assignedClubs;
+            } catch (e) {
+                user.assignedClubs = Array.isArray(assignedClubs) ? assignedClubs : user.assignedClubs;
+            }
+        }
+        if (user.role === 'tutor') {
+            user.assignedYear = assignedYear || user.assignedYear;
+        }
+
+        await user.save();
+        res.json({ message: 'Profile updated', user: sanitize(user) });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 function sanitize(user) {
     const u = user.toObject();
     delete u.passwordHash;
