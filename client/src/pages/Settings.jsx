@@ -78,7 +78,9 @@ export default function Settings() {
             <div className="card" style={{ maxWidth: 560 }}>
                 <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16 }}>Profile Information</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', marginBottom: 24 }}>
-                    {[['Name', user?.name], ['Email', user?.email], ['Role', user?.role], ['Department', user?.department || '—'],
+                    {[['Name', user?.name], ['Email', user?.email], ['Role', user?.role], 
+                    user?.role === 'faculty_coordinator' ? ['Assigned Clubs', user?.assignedClubs?.length ? user.assignedClubs.join(', ') : '—'] : null,
+                    ['Department', user?.department || '—'],
                     user?.role === 'student' ? ['Admission No', user?.admissionNo] : ['Staff ID', user?.staffId],
                     user?.role === 'student' && user?.yearOfStudy ? ['Year of Study', `${user.yearOfStudy}${user.yearOfStudy === 1 ? 'st' : user.yearOfStudy === 2 ? 'nd' : user.yearOfStudy === 3 ? 'rd' : 'th'} Year`] : null,
                     user?.role === 'tutor' && user?.assignedYear ? ['Assigned Year', `${user.assignedYear}${user.assignedYear === 1 ? 'st' : user.assignedYear === 2 ? 'nd' : user.assignedYear === 3 ? 'rd' : 'th'} Year`] : null,
