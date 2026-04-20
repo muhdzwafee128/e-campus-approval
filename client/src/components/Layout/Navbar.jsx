@@ -40,7 +40,12 @@ export default function Navbar({ onMenuClick }) {
 
                 <div style={{ textAlign: 'right' }}>
                     <div className="navbar-user-name">{user?.name}</div>
-                    <div className="navbar-role">{formatRole(user?.role)}</div>
+                    <div className="navbar-role">
+                        {formatRole(user?.role)}
+                        {user?.role === 'faculty_coordinator' && user?.assignedClubs?.length 
+                            ? ' · ' + user.assignedClubs.join(', ') 
+                            : ''}
+                    </div>
                 </div>
                 <div className="avatar">{initials}</div>
                 <LogOut
