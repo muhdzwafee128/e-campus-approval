@@ -61,26 +61,28 @@ router.post('/register/authority', uploadSignature.single('signature'), async (r
     try {
         const { name, email, password, role, department, staffId, assignedClubs, assignedYear } = req.body;
 
-        if (!['tutor', 'faculty_coordinator', 'hod', 'principal'].includes(role)) {
+        const VALID_AUTHORITY_ROLES = ['tutor', 'faculty_coordinator', 'hod', 'principal', 'office_staff'];
+        if (!VALID_AUTHORITY_ROLES.includes(role)) {
             return res.status(400).json({ message: 'Invalid authority role' });
         }
         if (await User.findOne({ email })) {
             return res.status(400).json({ message: 'Email already registered' });
         }
 
-        // signatureUrl: Cloudinary secure_url from the uploaded file
-        // (multer-storage-cloudinary sets req.file.path to the secure_url)
+        // Office staff do not need a signature
         let signatureUrl = '';
-        if (req.file) {
-            signatureUrl = req.file.path; // Cloudinary secure_url
-        } else {
-            return res.status(400).json({ message: 'Signature image is required for authority registration' });
+        if (role !== 'office_staff') {
+            if (req.file) {
+                signatureUrl = req.file.path; // Cloudinary secure_url
+            } else {
+                return res.status(400).json({ message: 'Signature image is required for authority registration' });
+            }
         }
 
         const passwordHash = await bcrypt.hash(password, 12);
         const user = await User.create({
             name, email, passwordHash, role, staffId,
-            department: ['faculty_coordinator', 'principal'].includes(role) ? '' : department,
+            department: ['faculty_coordinator', 'principal', 'office_staff'].includes(role) ? '' : department,
             signatureUrl,
             assignedClubs: role === 'faculty_coordinator'
                 ? (Array.isArray(assignedClubs) ? assignedClubs : JSON.parse(assignedClubs || '[]'))

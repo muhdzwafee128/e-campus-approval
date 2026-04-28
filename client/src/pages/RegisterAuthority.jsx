@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import { Upload, PenTool } from 'lucide-react';
 
-const ROLES = ['tutor', 'faculty_coordinator', 'hod', 'principal'];
-const ROLE_LABELS = { tutor: 'Class Tutor', faculty_coordinator: 'Faculty Coordinator', hod: 'HOD', principal: 'Principal' };
+const ROLES = ['tutor', 'faculty_coordinator', 'hod', 'principal', 'office_staff'];
+const ROLE_LABELS = { tutor: 'Class Tutor', faculty_coordinator: 'Faculty Coordinator', hod: 'HOD', principal: 'Principal', office_staff: 'Office Staff' };
 const DEPTS = ['CS1', 'CS2', 'IT', 'ECE', 'EEE', 'MECH', 'CIVIL', 'ECS'];
 const CLUBS = ['IEDC', 'IEEE', 'TinkerHub', 'MuLearn', 'NSS', 'NCC', 'Other'];
 
@@ -122,6 +122,8 @@ export default function RegisterAuthority() {
     const needsDept = ['tutor', 'hod'].includes(form.role);
     const isCoord = form.role === 'faculty_coordinator';
     const isTutor = form.role === 'tutor';
+    const isOfficeStaff = form.role === 'office_staff';
+    const needsSignature = !isOfficeStaff;
 
     return (
         <div className="auth-page" style={{ alignItems: 'flex-start', paddingTop: 40 }}>
@@ -195,7 +197,8 @@ export default function RegisterAuthority() {
                         </div>
                     </div>
 
-                    {/* Signature section */}
+                    {/* Signature section — hidden for Office Staff */}
+                    {needsSignature && (
                     <div className="form-group">
                         <label className="form-label required">Signature</label>
                         <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
@@ -236,6 +239,8 @@ export default function RegisterAuthority() {
                             </div>
                         )}
                     </div>
+                    )}
+
 
                     <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', marginTop: 8 }}>
                         {loading ? 'Creating Account…' : 'Create Account'}

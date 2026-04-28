@@ -19,9 +19,17 @@ const authorityNav = [
     { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
+const officeNav = [
+    { to: '/office/dashboard', icon: Home, label: 'Dashboard' },
+    { to: '/office/history', icon: History, label: 'History' },
+    { to: '/settings', icon: Settings, label: 'Settings' },
+];
+
 export default function Sidebar({ isOpen, onClose }) {
     const { user } = useAuth();
-    const navItems = user?.role === 'student' ? studentNav : authorityNav;
+    const navItems = user?.role === 'student' ? studentNav
+        : user?.role === 'office_staff' ? officeNav
+        : authorityNav;
 
     const deptOrRole = user?.role === 'student'
         ? `${user?.department || ''} · Yr ${user?.yearOfStudy || ''}`
@@ -64,6 +72,7 @@ function formatRole(role) {
         faculty_coordinator: 'Faculty Coordinator',
         hod: 'Head of Department',
         principal: 'Principal',
+        office_staff: 'Office Staff',
     };
     return map[role] || role;
 }

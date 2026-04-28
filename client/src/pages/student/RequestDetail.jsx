@@ -61,13 +61,17 @@ export default function RequestDetail() {
                         {request.requestId}
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     <StatusBadge status={request.status} />
-                    {request.status === 'approved' && (
+                    {(request.status === 'approved' || request.status === 'ready_to_collect' || request.status === 'completed') && request.approvalLetterUrl ? (
                         <button className="btn btn-secondary" onClick={handleDownload}>
                             <Download size={14} /> Download Letter
                         </button>
-                    )}
+                    ) : request.status === 'awaiting_office' ? (
+                        <button className="btn btn-secondary" disabled title="Letter will be available after office processing" style={{ opacity: 0.5 }}>
+                            <Download size={14} /> Awaiting Office
+                        </button>
+                    ) : null}
                 </div>
             </div>
 

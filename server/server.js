@@ -38,6 +38,7 @@ app.use('/pdfs', express.static(path.join(__dirname, 'pdfs')));
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/requests', require('./routes/request.routes'));
 app.use('/api/approvals', require('./routes/approval.routes'));
+app.use('/api/office', require('./routes/office.routes'));
 app.use('/api/documents', require('./routes/document.routes'));
 
 // Health check

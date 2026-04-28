@@ -394,6 +394,33 @@ body {
   background: var(--in-progress);
 }
 
+.badge-awaiting_office {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.badge-awaiting_office .badge-dot {
+  background: #F59E0B;
+}
+
+.badge-ready_to_collect {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.badge-ready_to_collect .badge-dot {
+  background: #3B82F6;
+}
+
+.badge-completed {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.badge-completed .badge-dot {
+  background: #10B981;
+}
+
 /* Role badges */
 .role-badge {
   display: inline-flex;

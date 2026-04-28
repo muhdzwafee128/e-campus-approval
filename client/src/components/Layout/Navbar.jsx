@@ -66,6 +66,7 @@ function formatRole(role) {
         faculty_coordinator: 'Faculty Coordinator',
         hod: 'Head of Department',
         principal: 'Principal',
+        office_staff: 'Office Staff',
     };
     return map[role] || role;
 }

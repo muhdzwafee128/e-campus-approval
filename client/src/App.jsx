@@ -19,21 +19,29 @@ import PendingQueue from './pages/authority/PendingQueue';
 import ReviewRequest from './pages/authority/ReviewRequest';
 import History from './pages/authority/History';
 
+// Office Staff pages
+import OfficeDashboard from './pages/office/OfficeDashboard';
+import ProcessRequest from './pages/office/ProcessRequest';
+import OfficeHistory from './pages/office/OfficeHistory';
+
 // Public
 import VerifyPage from './pages/Verify';
 
 // Settings (shared)
 import Settings from './pages/Settings';
 
+const AUTHORITY_ROLES = ['tutor', 'faculty_coordinator', 'hod', 'principal'];
+const OFFICE_ROLES = ['office_staff'];
+
 function ProtectedRoute({ children, allowed }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="spinner" style={{ marginTop: 120 }} />;
   if (!user) return <Navigate to="/login" replace />;
   if (allowed && !allowed.includes(user.role)) {
-    // Navigate directly to the user's correct home — never bounce through '/'
-    // which would loop back here via RoleRedirect
-    const home = user.role === 'student' ? '/dashboard' : '/authority/dashboard';
-    return <Navigate to={home} replace />;
+    // Navigate to the user's correct home
+    if (user.role === 'student') return <Navigate to="/dashboard" replace />;
+    if (user.role === 'office_staff') return <Navigate to="/office/dashboard" replace />;
+    return <Navigate to="/authority/dashboard" replace />;
   }
   return children;
 }
@@ -43,10 +51,9 @@ function RoleRedirect() {
   if (loading) return <div className="spinner" style={{ marginTop: 120 }} />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'student') return <Navigate to="/dashboard" replace />;
+  if (user.role === 'office_staff') return <Navigate to="/office/dashboard" replace />;
   return <Navigate to="/authority/dashboard" replace />;
 }
-
-const AUTHORITY_ROLES = ['tutor', 'faculty_coordinator', 'hod', 'principal'];
 
 export default function App() {
   return (
@@ -101,6 +108,23 @@ export default function App() {
           <Route path="/authority/history" element={
             <ProtectedRoute allowed={AUTHORITY_ROLES}>
               <History />
+            </ProtectedRoute>
+          } />
+
+          {/* Office Staff routes */}
+          <Route path="/office/dashboard" element={
+            <ProtectedRoute allowed={OFFICE_ROLES}>
+              <OfficeDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/office/process/:id" element={
+            <ProtectedRoute allowed={OFFICE_ROLES}>
+              <ProcessRequest />
+            </ProtectedRoute>
+          } />
+          <Route path="/office/history" element={
+            <ProtectedRoute allowed={OFFICE_ROLES}>
+              <OfficeHistory />
             </ProtectedRoute>
           } />
 
