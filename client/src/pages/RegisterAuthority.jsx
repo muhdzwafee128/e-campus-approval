@@ -98,20 +98,26 @@ export default function RegisterAuthority() {
         e.preventDefault();
         setError('');
         if (form.password !== form.confirmPassword) { setError('Passwords do not match'); return; }
-        if (!sigFile) { setError('Signature image is required for authority registration'); return; }
+        if (form.role !== 'office_staff' && !sigFile) {
+            setError('Signature image is required for authority registration');
+            return;
+        }
 
         const fd = new FormData();
         Object.entries(form).forEach(([k, v]) => {
             if (k === 'assignedClubs') fd.append(k, JSON.stringify(v));
             else fd.append(k, v);
         });
-        fd.append('signature', sigFile); // Always a File object (uploaded or canvas-drawn)
+        // Only attach signature for roles that need it
+        if (form.role !== 'office_staff' && sigFile) {
+            fd.append('signature', sigFile);
+        }
 
         setLoading(true);
         try {
             const res = await api.post('/auth/register/authority', fd);
             login(res.data.token, res.data.user);
-            navigate('/authority/dashboard');
+            navigate(res.data.user.role === 'office_staff' ? '/office/dashboard' : '/authority/dashboard');
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed');
         } finally {
