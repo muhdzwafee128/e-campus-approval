@@ -26,7 +26,7 @@ const requestSchema = new mongoose.Schema(
         // Routing & status
         status: {
             type: String,
-            enum: ['pending', 'in_progress', 'approved', 'rejected'],
+            enum: ['pending', 'in_progress', 'approved', 'rejected', 'awaiting_office', 'ready_to_collect', 'completed'],
             default: 'pending',
         },
         approvalChain: { type: [String], default: [] }, // e.g. ['tutor', 'hod', 'principal']
@@ -38,6 +38,19 @@ const requestSchema = new mongoose.Schema(
 
         // Cloudinary URL of the final approved permission-letter PDF
         approvalLetterUrl: { type: String, default: '' },
+
+        // Office Staff processing fields
+        officeProcessedBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        officePreparedBy:    { type: String, default: '' },
+        officeScrutinyBy:    { type: String, default: '' },
+        officeRemarks:       { type: String, default: '' },
+        officeProcessedAt:   { type: Date },
+        isHandedOver:        { type: Boolean, default: false },
+        handedOverAt:        { type: Date },
+        // Borrow Certificate only
+        returnDueDate:       { type: Date },
+        isReturnedByStudent: { type: Boolean, default: false },
+        returnedAt:          { type: Date },
 
         // Unique readable ID
         requestId: { type: String, unique: true },

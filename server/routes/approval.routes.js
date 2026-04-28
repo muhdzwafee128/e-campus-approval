@@ -12,6 +12,7 @@ const { generatePermissionLetterPDF } = require('../services/pdf.service');
 const { generateVerificationToken, generateQRCode } = require('../services/qr.service');
 
 const AUTHORITY_ROLES = ['tutor', 'faculty_coordinator', 'hod', 'principal'];
+const OFFICE_TYPES = ['general_certificate', 'borrow_certificate', 'season_ticket', 'fee_structure'];
 
 // POST /api/approvals/:requestId — approve or reject
 router.post('/:requestId', protect, authorizeRoles(...AUTHORITY_ROLES), async (req, res) => {
@@ -65,21 +66,42 @@ router.post('/:requestId', protect, authorizeRoles(...AUTHORITY_ROLES), async (r
         // Approved — advance to next step
         const nextStep = request.currentStep + 1;
         if (nextStep >= request.approvalChain.length) {
-            // FINAL APPROVAL — mark approved and respond immediately
-            request.status = 'approved';
+            // FINAL APPROVAL
+            const goesToOffice = OFFICE_TYPES.includes(request.type);
             request.currentHolder = null;
             request.currentStep = nextStep;
+
+            if (goesToOffice) {
+                request.status = 'awaiting_office';
+                if (request.type === 'borrow_certificate' && request.formData?.returnDate) {
+                    request.returnDueDate = new Date(request.formData.returnDate);
+                }
+            } else {
+                request.status = 'approved';
+            }
             await request.save();
 
-            // Notify student immediately
+            // Notify student
             if (io) io.to(request.studentId._id.toString()).emit('request_update', {
-                requestId: request.requestId, status: 'approved',
+                requestId: request.requestId, status: request.status,
             });
 
-            // Respond NOW so the authority UI can navigate away
-            res.json({ message: 'Final approval — PDF generating in background', request });
+            if (goesToOffice) {
+                // Notify ALL office_staff users
+                const officeUsers = await User.find({ role: 'office_staff' }, '_id');
+                officeUsers.forEach(ou => {
+                    if (io) io.to(ou._id.toString()).emit('new_office_request', {
+                        requestId: request.requestId,
+                        type: request.type,
+                        studentName: request.studentId.name,
+                    });
+                });
+                res.json({ message: 'Final approval — forwarding to office', request });
+            } else {
+                res.json({ message: 'Final approval — PDF generating in background', request });
+            }
 
-            // Generate PDF asynchronously (non-blocking)
+            // Generate PDF asynchronously for all final approvals
             setImmediate(async () => {
                 try {
                     const allSteps = await ApprovalStep.find({ requestId: request._id })

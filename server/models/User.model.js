@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema(
         role: {
             type: String,
             required: true,
-            enum: ['student', 'tutor', 'faculty_coordinator', 'hod', 'principal'],
+            enum: ['student', 'tutor', 'faculty_coordinator', 'hod', 'principal', 'office_staff'],
         },
 
         // Student-only fields
