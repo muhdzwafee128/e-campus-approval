@@ -16,12 +16,13 @@ function HistoryBadge({ request }) {
     const isBorrow = request.type === 'borrow_certificate';
     const isReturned = request.isReturnedByStudent;
     const isHandedOver = request.isHandedOver;
+    const isReturnedClosed = request.status === 'returned_and_closed';
 
+    if (isBorrow && (isReturnedClosed || isReturned)) {
+        return <span style={{ background: '#D1FAE5', color: '#065F46', padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600 }}>Returned & closed</span>;
+    }
     if (isBorrow && isHandedOver && !isReturned) {
         return <span style={{ background: '#DBEAFE', color: '#1D4ED8', padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600 }}>Issued, pending return</span>;
-    }
-    if (isBorrow && isReturned) {
-        return <span style={{ background: '#D1FAE5', color: '#065F46', padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600 }}>Returned & closed</span>;
     }
     return <span style={{ background: '#D1FAE5', color: '#065F46', padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600 }}>Delivered</span>;
 }
@@ -84,8 +85,8 @@ export default function OfficeHistory() {
         return key === monthFilter;
     });
 
-    // Pending returns
-    const pendingReturns = requests.filter(r => r.type === 'borrow_certificate' && r.isHandedOver && !r.isReturnedByStudent);
+    // Pending returns: borrow certs that are 'completed' (collected) but not yet returned
+    const pendingReturns = requests.filter(r => r.type === 'borrow_certificate' && r.status === 'completed' && !r.isReturnedByStudent);
 
     return (
         <PageLayout>

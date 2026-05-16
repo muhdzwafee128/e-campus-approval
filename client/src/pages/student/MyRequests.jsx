@@ -70,7 +70,7 @@ export default function MyRequests() {
                                     </div>
                                 </div>
                                 <StatusBadge status={r.status} />
-                                {r.status === 'approved' && (
+                                {['approved', 'completed', 'returned_and_closed'].includes(r.status) && (
                                     <button
                                         className="btn btn-ghost"
                                         style={{ fontSize: 12, padding: '4px 10px', color: 'var(--approved)' }}

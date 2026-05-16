@@ -26,7 +26,7 @@ const requestSchema = new mongoose.Schema(
         // Routing & status
         status: {
             type: String,
-            enum: ['pending', 'in_progress', 'approved', 'rejected', 'awaiting_office', 'ready_to_collect', 'completed'],
+            enum: ['pending', 'in_progress', 'approved', 'rejected', 'awaiting_office', 'ready_to_collect', 'completed', 'returned_and_closed'],
             default: 'pending',
         },
         approvalChain: { type: [String], default: [] }, // e.g. ['tutor', 'hod', 'principal']

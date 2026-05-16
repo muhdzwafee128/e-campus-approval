@@ -23,9 +23,10 @@ const FILTERS = [
 
 function officeBadge(status) {
     const map = {
-        awaiting_office: { label: 'Ready to process', color: '#F59E0B', bg: '#FEF3C7' },
-        ready_to_collect: { label: 'In progress', color: '#3B82F6', bg: '#DBEAFE' },
-        completed: { label: 'Delivered', color: '#10B981', bg: '#D1FAE5' },
+        awaiting_office:     { label: 'Ready to process',  color: '#F59E0B', bg: '#FEF3C7' },
+        ready_to_collect:    { label: 'In progress',        color: '#3B82F6', bg: '#DBEAFE' },
+        completed:           { label: 'Delivered',          color: '#10B981', bg: '#D1FAE5' },
+        returned_and_closed: { label: 'Returned & Closed',  color: '#10B981', bg: '#D1FAE5' },
     };
     const s = map[status] || { label: status, color: '#64748B', bg: '#F1F5F9' };
     return (
