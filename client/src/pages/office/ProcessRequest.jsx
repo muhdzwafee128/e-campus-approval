@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import PageLayout from '../../components/Layout/PageLayout';
 import ApprovalTrail from '../../components/ApprovalTrail';
-import { ChevronLeft, Download, Printer } from 'lucide-react';
+import { ChevronLeft, Download, CheckCircle, AlertCircle } from 'lucide-react';
 import api from '../../api/axios';
 
 const TYPE_LABELS = {
@@ -13,30 +13,42 @@ const TYPE_LABELS = {
     fee_structure: 'Fee Structure for Educational Loan',
 };
 
-const ROLE_LABELS = {
-    tutor: 'Group Tutor',
-    faculty_coordinator: 'Faculty In-charge',
-    hod: 'Head of Department',
-    principal: 'Principal',
-};
-
 function InfoRow({ label, value }) {
     return (
         <div style={{ paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase' }}>{label}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{label}</div>
             <div style={{ fontSize: 13, marginTop: 2 }}>{value || '—'}</div>
         </div>
     );
 }
 
-function OfficeBadge({ status }) {
+function StatusPill({ status }) {
     const map = {
-        awaiting_office: { label: 'Ready to process', color: '#F59E0B', bg: '#FEF3C7' },
-        ready_to_collect: { label: 'In progress', color: '#3B82F6', bg: '#DBEAFE' },
-        completed: { label: 'Delivered', color: '#10B981', bg: '#D1FAE5' },
+        awaiting_office:    { label: 'Ready to process',     bg: '#FEF3C7', color: '#92400E' },
+        ready_to_collect:   { label: 'Processed — Pending Collection', bg: '#DBEAFE', color: '#1D4ED8' },
+        completed:          { label: 'Collected by student', bg: '#D1FAE5', color: '#065F46' },
+        returned_and_closed:{ label: 'Returned & Closed',    bg: '#D1FAE5', color: '#065F46' },
     };
-    const s = map[status] || { label: status, color: '#64748B', bg: '#F1F5F9' };
-    return <span style={{ background: s.bg, color: s.color, padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600 }}>{s.label}</span>;
+    const s = map[status] || { label: status, bg: '#F1F5F9', color: '#64748B' };
+    return <span style={{ background: s.bg, color: s.color, padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600 }}>{s.label}</span>;
+}
+
+function InfoBanner({ color, bg, border, icon: Icon, text }) {
+    return (
+        <div style={{ background: bg, border: `1px solid ${border}`, borderRadius: 8, padding: '12px 14px', display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 16 }}>
+            <Icon size={16} color={color} style={{ marginTop: 1, flexShrink: 0 }} />
+            <div style={{ fontSize: 13, color, fontWeight: 500 }}>{text}</div>
+        </div>
+    );
+}
+
+function fmt(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+}
+function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 export default function ProcessRequest() {
@@ -47,79 +59,112 @@ export default function ProcessRequest() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [msg, setMsg] = useState('');
+    const [msg, setMsg] = useState(null); // { text, type: 'success'|'error' }
 
+    // Phase 1 form fields
     const [form, setForm] = useState({
         officePreparedBy: '',
         officeScrutinyBy: '',
         officeRemarks: '',
-        isHandedOver: false,
-        isReturnedByStudent: false,
     });
 
-    useEffect(() => {
-        api.get(`/office/request/${id}`)
-            .then(res => {
-                setData(res.data);
-                const r = res.data.request;
-                setForm(prev => ({
-                    ...prev,
-                    officePreparedBy: r.officePreparedBy || user?.name || '',
-                    officeScrutinyBy: r.officeScrutinyBy || '',
-                    officeRemarks: r.officeRemarks || '',
-                    isHandedOver: r.isHandedOver || false,
-                    isReturnedByStudent: r.isReturnedByStudent || false,
-                }));
-            })
-            .finally(() => setLoading(false));
-    }, [id]);
+    // Phase 2 checkboxes
+    const [handoverChecked, setHandoverChecked] = useState(false);
+    const [returnChecked, setReturnChecked] = useState(false);
+
+    const refresh = () =>
+        api.get(`/office/request/${id}`).then(res => {
+            setData(res.data);
+            const r = res.data.request;
+            setForm({
+                officePreparedBy: r.officePreparedBy || user?.name || '',
+                officeScrutinyBy: r.officeScrutinyBy || '',
+                officeRemarks: r.officeRemarks || '',
+            });
+        }).finally(() => setLoading(false));
+
+    useEffect(() => { refresh(); }, [id]);
 
     const setF = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-    const handleSave = async (markComplete = false) => {
-        setSaving(true); setMsg('');
+    // ─── ACTIONS ───────────────────────────────────────────────────────────────
+
+    const handleSaveDraft = async () => {
+        setSaving(true); setMsg(null);
         try {
-            const payload = { ...form };
-            if (!markComplete) {
-                // Save draft without completing
-                payload.isHandedOver = false;
-            }
-            const res = await api.post(`/office/process/${id}`, payload);
-            setData(prev => ({ ...prev, request: res.data.request }));
-            setMsg(markComplete ? 'Marked as complete. Student has been notified.' : 'Draft saved.');
+            await api.post(`/office/save-draft/${id}`, form);
+            setMsg({ text: 'Draft saved successfully.', type: 'success' });
         } catch (err) {
-            setMsg(err.response?.data?.message || 'Save failed');
+            setMsg({ text: err.response?.data?.message || 'Save failed.', type: 'error' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleMarkComplete = async () => {
+        setSaving(true); setMsg(null);
+        try {
+            const res = await api.post(`/office/mark-complete/${id}`, form);
+            setData(prev => ({ ...prev, request: res.data.request }));
+            setMsg({ text: 'Processing complete. Student has been notified to collect. PDF is being updated.', type: 'success' });
+        } catch (err) {
+            setMsg({ text: err.response?.data?.message || 'Failed.', type: 'error' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleHandover = async () => {
+        setSaving(true); setMsg(null);
+        try {
+            const res = await api.post(`/office/handover/${id}`);
+            setData(prev => ({ ...prev, request: res.data.request }));
+            setHandoverChecked(false);
+            setMsg({ text: 'Student handover confirmed. Request marked as complete.', type: 'success' });
+        } catch (err) {
+            setMsg({ text: err.response?.data?.message || 'Failed.', type: 'error' });
         } finally {
             setSaving(false);
         }
     };
 
     const handleReturn = async () => {
-        setSaving(true); setMsg('');
+        setSaving(true); setMsg(null);
         try {
             const res = await api.post(`/office/return/${id}`);
             setData(prev => ({ ...prev, request: res.data.request }));
-            setMsg('Marked as returned and closed.');
+            setReturnChecked(false);
+            setMsg({ text: 'Original certificate marked as returned. Request fully closed.', type: 'success' });
         } catch (err) {
-            setMsg(err.response?.data?.message || 'Failed');
+            setMsg({ text: err.response?.data?.message || 'Failed.', type: 'error' });
         } finally {
             setSaving(false);
         }
     };
 
-    if (loading) return <PageLayout><div className="spinner" /></PageLayout>;
+    // ─── LOADING / NOT FOUND ───────────────────────────────────────────────────
+
+    if (loading) return <PageLayout><div className="spinner" style={{ margin: '60px auto' }} /></PageLayout>;
     if (!data) return <PageLayout><div>Request not found</div></PageLayout>;
 
     const { request, steps } = data;
     const isBorrow = request.type === 'borrow_certificate';
-    const canComplete = form.isHandedOver;
-    const isCompleted = request.status === 'completed';
+    const status = request.status;
+
+    // Determine current phase state
+    const isPhase1Editable   = status === 'awaiting_office';
+    const isPhase1ReadOnly   = ['ready_to_collect', 'completed', 'returned_and_closed'].includes(status);
+    const showPhase2         = ['ready_to_collect', 'completed', 'returned_and_closed'].includes(status);
+    const isPhase2Handover   = status === 'ready_to_collect';
+    const showBorrowReturn   = isBorrow && status === 'completed';
+    const isFullyClosed      = status === 'completed' && !isBorrow || status === 'returned_and_closed';
 
     return (
         <PageLayout>
-            {/* Header */}
+            {/* Back + header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-                <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 13 }} onClick={() => navigate('/office/dashboard')}>
+                <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}
+                    onClick={() => navigate('/office/dashboard')}>
                     <ChevronLeft size={14} /> Back to Queue
                 </button>
             </div>
@@ -129,13 +174,14 @@ export default function ProcessRequest() {
                     <div className="page-title">{TYPE_LABELS[request.type]}</div>
                     <div style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginTop: 4 }}>{request.requestId}</div>
                 </div>
-                <OfficeBadge status={request.status} />
+                <StatusPill status={status} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, alignItems: 'start' }}>
 
-                {/* LEFT PANE — Read-only info */}
+                {/* ─── LEFT PANE — read-only request info ──────────────────────── */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
                     {/* Student Info */}
                     <div className="card">
                         <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 14 }}>Student Information</div>
@@ -150,7 +196,9 @@ export default function ProcessRequest() {
                             {isBorrow && request.formData?.certificates && (
                                 <InfoRow label="Certificates Needed" value={request.formData.certificates?.join(', ')} />
                             )}
-                            {isBorrow && <InfoRow label="Expected Return Date" value={request.formData?.returnDate ? new Date(request.formData.returnDate).toLocaleDateString('en-IN') : '—'} />}
+                            {isBorrow && (
+                                <InfoRow label="Expected Return Date" value={fmtDate(request.formData?.returnDate)} />
+                            )}
                         </div>
                     </div>
 
@@ -161,14 +209,15 @@ export default function ProcessRequest() {
                             chain={request.approvalChain}
                             steps={steps}
                             currentStep={request.approvalChain.length}
-                            status={request.status}
+                            status={status}
                         />
                     </div>
 
-                    {/* Document actions */}
+                    {/* View PDF */}
                     <div style={{ display: 'flex', gap: 10 }}>
                         {request.approvalLetterUrl ? (
-                            <a href={request.approvalLetterUrl} target="_blank" rel="noreferrer" className="btn btn-secondary">
+                            <a href={request.approvalLetterUrl} target="_blank" rel="noreferrer" className="btn btn-secondary"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                                 <Download size={14} /> View PDF
                             </a>
                         ) : (
@@ -177,12 +226,26 @@ export default function ProcessRequest() {
                     </div>
                 </div>
 
-                {/* RIGHT PANE — For Office Use Only */}
+                {/* ─── RIGHT PANE — office action panel ────────────────────────── */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                    {/* Feedback message */}
+                    {msg && (
+                        <div style={{
+                            padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+                            background: msg.type === 'success' ? '#D1FAE5' : '#FEE2E2',
+                            color: msg.type === 'success' ? '#065F46' : '#991B1B',
+                            border: `1px solid ${msg.type === 'success' ? '#6EE7B7' : '#FCA5A5'}`,
+                        }}>
+                            {msg.text}
+                        </div>
+                    )}
+
+                    {/* ── PHASE 1 — For Office Use Only ── */}
                     <div className="card">
                         <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>For Office Use Only</div>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
-                            Fields below will be recorded on the request record.
+                            Fields below will be recorded on the request record and printed in the PDF.
                         </div>
 
                         <div className="form-group">
@@ -191,92 +254,131 @@ export default function ProcessRequest() {
                                 readOnly
                                 style={{ background: '#F8FAFC', color: 'var(--text-secondary)' }} />
                         </div>
+
                         <div className="form-group">
-                            <label className="form-label">Scrutiny By (Optional)</label>
+                            <label className="form-label">Scrutiny By <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(Optional)</span></label>
                             <input className="form-input" value={form.officeScrutinyBy}
                                 onChange={e => setF('officeScrutinyBy', e.target.value)}
-                                placeholder="Name of scrutinising officer" disabled={isCompleted} />
+                                placeholder="Name of scrutinising officer"
+                                disabled={isPhase1ReadOnly}
+                                style={isPhase1ReadOnly ? { background: '#F8FAFC', color: 'var(--text-secondary)' } : {}} />
                         </div>
+
                         <div className="form-group">
-                            <label className="form-label">Remarks (Optional)</label>
+                            <label className="form-label">Remarks <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(Optional)</span></label>
                             <textarea className="form-textarea" rows={3} value={form.officeRemarks}
                                 onChange={e => setF('officeRemarks', e.target.value)}
-                                placeholder="Any internal notes" disabled={isCompleted} />
+                                placeholder="Any internal notes"
+                                disabled={isPhase1ReadOnly}
+                                style={isPhase1ReadOnly ? { background: '#F8FAFC', color: 'var(--text-secondary)', resize: 'none' } : {}} />
                         </div>
 
-                        {!isCompleted && (
-                            <button className="btn btn-secondary" style={{ width: '100%', marginBottom: 20 }}
-                                onClick={() => handleSave(false)} disabled={saving}>
-                                Save Draft
-                            </button>
+                        {isPhase1Editable && (
+                            <>
+                                <button className="btn btn-secondary" style={{ width: '100%', marginBottom: 10 }}
+                                    onClick={handleSaveDraft} disabled={saving}>
+                                    Save Draft
+                                </button>
+                                <button className="btn btn-primary" style={{ width: '100%' }}
+                                    onClick={handleMarkComplete} disabled={saving}>
+                                    {saving ? 'Processing…' : 'Mark as Complete'}
+                                </button>
+                            </>
                         )}
 
-                        {/* Student Handover */}
-                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 12 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 12 }}>Student Handover</div>
-                            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: isCompleted ? 'default' : 'pointer' }}>
-                                <input type="checkbox" checked={form.isHandedOver}
-                                    onChange={e => setF('isHandedOver', e.target.checked)}
-                                    disabled={isCompleted}
-                                    style={{ marginTop: 2, cursor: isCompleted ? 'default' : 'pointer' }} />
-                                <div>
-                                    <div style={{ fontSize: 13, fontWeight: 500 }}>Student has received the certificate / document</div>
-                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
-                                        Checking this marks the request as fully closed and updates the student's dashboard to "Ready to collect".
-                                    </div>
-                                </div>
-                            </label>
-                        </div>
-
-                        {/* Borrow certificate: return tracking */}
-                        {isBorrow && form.isHandedOver && (
-                            <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 8, padding: 12, marginBottom: 12 }}>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: '#9A3412', marginBottom: 8 }}>
-                                    Original Certificate Return
-                                </div>
-                                <div style={{ fontSize: 12, color: '#7C2D12', marginBottom: 10 }}>
-                                    Expected return date: <strong>{request.formData?.returnDate ? new Date(request.formData.returnDate).toLocaleDateString('en-IN') : '—'}</strong>
-                                </div>
-                                {!isCompleted && (
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-                                        <input type="checkbox" checked={form.isReturnedByStudent}
-                                            onChange={e => setF('isReturnedByStudent', e.target.checked)} />
-                                        Original certificate returned by student
-                                    </label>
-                                )}
-                                {isCompleted && request.isReturnedByStudent && (
-                                    <div style={{ fontSize: 12, color: '#10B981', fontWeight: 600 }}>✓ Returned & Closed</div>
-                                )}
-                            </div>
-                        )}
-
-                        {msg && (
-                            <div style={{ fontSize: 13, marginBottom: 12, color: msg.includes('failed') || msg.includes('Failed') ? '#EF4444' : '#10B981' }}>
-                                {msg}
-                            </div>
-                        )}
-
-                        {!isCompleted && (
-                            <button className="btn btn-primary" style={{ width: '100%' }}
-                                onClick={() => handleSave(true)}
-                                disabled={!canComplete || saving}>
-                                {saving ? 'Saving…' : 'Mark as Complete'}
-                            </button>
-                        )}
-
-                        {isCompleted && !request.isReturnedByStudent && isBorrow && (
-                            <button className="btn btn-primary" style={{ width: '100%' }}
-                                onClick={handleReturn} disabled={saving}>
-                                {saving ? 'Saving…' : 'Mark Certificate as Returned'}
-                            </button>
-                        )}
-
-                        {isCompleted && (!isBorrow || request.isReturnedByStudent) && (
-                            <div style={{ textAlign: 'center', fontSize: 13, color: '#10B981', fontWeight: 600, padding: '12px 0' }}>
-                                ✓ Request fully completed
-                            </div>
+                        {isPhase1ReadOnly && (
+                            <InfoBanner
+                                bg="#D1FAE5" border="#6EE7B7" color="#065F46" icon={CheckCircle}
+                                text={`Processing complete on ${fmt(request.officeProcessedAt)}. Student notified to collect.`}
+                            />
                         )}
                     </div>
+
+                    {/* ── PHASE 2 — Student Handover ── */}
+                    {showPhase2 && (
+                        <div className="card">
+                            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Student Handover</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
+                                Mark when the student physically collects the document from the office.
+                            </div>
+
+                            {isPhase2Handover ? (
+                                <>
+                                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', marginBottom: 16 }}>
+                                        <input type="checkbox" checked={handoverChecked}
+                                            onChange={e => setHandoverChecked(e.target.checked)}
+                                            style={{ marginTop: 2 }} />
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 500 }}>Student has received the certificate / document</div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
+                                                This updates the student's dashboard to "Complete" and enables the Download Letter button.
+                                            </div>
+                                        </div>
+                                    </label>
+                                    <button className="btn btn-primary" style={{ width: '100%' }}
+                                        onClick={handleHandover}
+                                        disabled={!handoverChecked || saving}>
+                                        {saving ? 'Saving…' : 'Student Received'}
+                                    </button>
+                                </>
+                            ) : (
+                                <InfoBanner
+                                    bg="#D1FAE5" border="#6EE7B7" color="#065F46" icon={CheckCircle}
+                                    text={`Collected by student on ${fmt(request.handedOverAt)}.`}
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── PHASE 2b — Borrow Certificate Return (shown after student collected) ── */}
+                    {isBorrow && showPhase2 && status !== 'ready_to_collect' && (
+                        <div className="card">
+                            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Original Certificate Return</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
+                                Expected return date: <strong>{fmtDate(request.returnDueDate || request.formData?.returnDate)}</strong>
+                            </div>
+
+                            {status === 'completed' ? (
+                                <>
+                                    {new Date(request.returnDueDate || request.formData?.returnDate) < new Date() && (
+                                        <InfoBanner
+                                            bg="#FEF3C7" border="#FCD34D" color="#92400E" icon={AlertCircle}
+                                            text="Return date has passed. Waiting for student to return the originals."
+                                        />
+                                    )}
+                                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', marginBottom: 16 }}>
+                                        <input type="checkbox" checked={returnChecked}
+                                            onChange={e => setReturnChecked(e.target.checked)}
+                                            style={{ marginTop: 2 }} />
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 500 }}>Original certificate returned by student</div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
+                                                This closes the request permanently.
+                                            </div>
+                                        </div>
+                                    </label>
+                                    <button className="btn btn-primary" style={{ width: '100%' }}
+                                        onClick={handleReturn}
+                                        disabled={!returnChecked || saving}>
+                                        {saving ? 'Saving…' : 'Mark as Returned'}
+                                    </button>
+                                </>
+                            ) : (
+                                <InfoBanner
+                                    bg="#D1FAE5" border="#6EE7B7" color="#065F46" icon={CheckCircle}
+                                    text={`Original certificate returned on ${fmt(request.returnedAt)}. Request fully closed.`}
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {/* Fully closed banner (non-borrow) */}
+                    {!isBorrow && status === 'completed' && (
+                        <InfoBanner
+                            bg="#D1FAE5" border="#6EE7B7" color="#065F46" icon={CheckCircle}
+                            text="Request fully closed."
+                        />
+                    )}
                 </div>
             </div>
         </PageLayout>

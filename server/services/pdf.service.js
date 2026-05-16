@@ -189,13 +189,19 @@ const TYPE_TITLES = {
   fee_structure: 'FEE STRUCTURE FOR EDUCATIONAL LOAN',
 };
 
-async function generatePermissionLetterPDF(request, student, approvalSteps, verificationToken) {
+async function generatePermissionLetterPDF(request, student, approvalSteps, verificationToken, officeFields = {}) {
   const approvalDate = approvalSteps[approvalSteps.length - 1]?.timestamp || new Date();
   const qrDataUrl = await generateQRCode(request.requestId, verificationToken);
   const sigBlocks = buildSignatureBlocks(approvalSteps, request.approvalChain);
   const reqBody = buildRequestBody(request.type, request.formData);
   const needsOfficeSection = OFFICE_USE_TYPES.includes(request.type);
   const title = TYPE_TITLES[request.type] || 'PERMISSION REQUEST';
+
+  // Office fields — filled when regenerating after Mark as Complete
+  const preparedBy = officeFields.officePreparedBy || '';
+  const scrutinyBy = officeFields.officeScrutinyBy || '';
+  const remarks    = officeFields.officeRemarks    || '';
+  const processedAt = officeFields.officeProcessedAt ? formatDate(officeFields.officeProcessedAt) : '';
 
   const html = `<!DOCTYPE html>
 <html>
@@ -284,17 +290,17 @@ ${needsOfficeSection ? `
 <div class="office-section">
   <div class="office-title">FOR OFFICE USE ONLY</div>
   <div class="two-col">
-    <div><span class="field-label">Certificate prepared by:</span><div class="office-field">&nbsp;</div></div>
-    <div><span class="field-label">Scrutiny by:</span><div class="office-field">&nbsp;</div></div>
+    <div><span class="field-label">Certificate prepared by:</span><div class="office-field">${preparedBy || '&nbsp;'}</div></div>
+    <div><span class="field-label">Scrutiny by:</span><div class="office-field">${scrutinyBy || '&nbsp;'}</div></div>
   </div>
-  <div><span class="field-label">Remarks by section:</span><div class="office-field" style="height:28px;">&nbsp;</div></div>
+  <div><span class="field-label">Remarks by section:</span><div class="office-field" style="height:28px;">${remarks || '&nbsp;'}</div></div>
   <div style="margin-top:12px;"><span class="field-label">Verification:</span><div class="office-field" style="height:28px;">&nbsp;</div></div>
   <div style="text-align:right;margin-top:16px;">
     <div style="font-weight:bold;">Approved</div>
     <div>Principal</div>
   </div>
   <div class="two-col" style="margin-top:20px;">
-    <div><span class="field-label">Date:</span><div class="office-field">&nbsp;</div></div>
+    <div><span class="field-label">Date:</span><div class="office-field">${processedAt || '&nbsp;'}</div></div>
     <div><span class="field-label">Signature of the student:</span><div class="office-field">&nbsp;</div></div>
   </div>
   <div><span class="field-label">Received certificate:</span><div class="office-field">&nbsp;</div></div>
