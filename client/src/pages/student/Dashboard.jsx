@@ -47,16 +47,9 @@ export default function StudentDashboard() {
     const total = requests.length;
     const recent = requests.slice(0, 5);
 
-    const greeting = () => {
-        const h = new Date().getHours();
-        if (h < 12) return 'Good morning';
-        if (h < 17) return 'Good afternoon';
-        return 'Good evening';
-    };
 
     return (
         <PageLayout>
-            <div className="page-title">{greeting()}, {user?.name?.split(' ')[0]}</div>
             <div className="page-subtitle">
                 {user?.department} · Year {user?.yearOfStudy} · Admn: {user?.admissionNo}
             </div>

@@ -42,7 +42,9 @@ export default function Sidebar({ isOpen, onClose }) {
             <div className="sidebar-user">
                 <div className="sidebar-caption">Logged in as</div>
                 <div className="sidebar-name">{user?.name}</div>
-                <div className="sidebar-dept">{deptOrRole}</div>
+                {user?.role !== 'student' && (
+                    <div className="sidebar-dept">{deptOrRole}</div>
+                )}
                 {user?.role === 'faculty_coordinator' && user?.assignedClubs?.length > 0 && (
                     <div className="sidebar-clubs" style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                         {user.assignedClubs.join(', ')}
