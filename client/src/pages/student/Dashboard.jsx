@@ -50,6 +50,7 @@ export default function StudentDashboard() {
 
     return (
         <PageLayout>
+            <div className="page-title">Dashboard</div>
             <div className="page-subtitle">
                 {user?.department} · Year {user?.yearOfStudy} · Admn: {user?.admissionNo}
             </div>
