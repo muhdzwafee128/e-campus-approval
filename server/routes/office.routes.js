@@ -220,7 +220,7 @@ router.post('/mark-complete/:id', async (req, res) => {
 router.post('/handover/:id', async (req, res) => {
     try {
         const request = await Request.findById(req.params.id)
-            .populate('studentId', 'name _id');
+            .populate('studentId', 'name admissionNo department yearOfStudy category _id');
 
         if (!request) return res.status(404).json({ message: 'Request not found' });
         if (request.status !== 'ready_to_collect') {
@@ -259,7 +259,7 @@ router.post('/handover/:id', async (req, res) => {
 router.post('/return/:id', async (req, res) => {
     try {
         const request = await Request.findById(req.params.id)
-            .populate('studentId', 'name _id');
+            .populate('studentId', 'name admissionNo department yearOfStudy category _id');
 
         if (!request) return res.status(404).json({ message: 'Request not found' });
         if (request.type !== 'borrow_certificate') {

@@ -128,7 +128,13 @@ export default function ProcessRequest() {
         setSaving(true); setErrorMsg('');
         try {
             const res = await api.post(`/office/handover/${id}`);
-            setData(prev => ({ ...prev, request: res.data.request }));
+            // Only merge the fields that changed — never replace studentId (which
+            // may come back with fewer populated fields from the handover endpoint).
+            const { status, isHandedOver, handedOverAt } = res.data.request;
+            setData(prev => ({
+                ...prev,
+                request: { ...prev.request, status, isHandedOver, handedOverAt },
+            }));
             setHandoverChecked(false);
             // inline green banner in Phase 2 section confirms this — no top toast
         } catch (err) {
@@ -142,7 +148,12 @@ export default function ProcessRequest() {
         setSaving(true); setErrorMsg('');
         try {
             const res = await api.post(`/office/return/${id}`);
-            setData(prev => ({ ...prev, request: res.data.request }));
+            // Only merge the fields that changed — never replace studentId.
+            const { status, isReturnedByStudent, returnedAt } = res.data.request;
+            setData(prev => ({
+                ...prev,
+                request: { ...prev.request, status, isReturnedByStudent, returnedAt },
+            }));
             setReturnChecked(false);
             // inline green banner in Phase 2b section confirms this — no top toast
         } catch (err) {
