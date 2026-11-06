@@ -251,7 +251,7 @@ The Express application exposes the following API route groups:
 
 Most application endpoints require authentication. The document verification endpoint is public and validates the request ID and verification token.
 
-## Screenshots
+<!-- ## Screenshots
 
 Screenshots can be added to this section to help reviewers understand the application without running it.
 
@@ -273,7 +273,7 @@ Once the screenshots are added, you can use the following Markdown to display th
 ![Login page](docs/screenshots/login.png)
 ![Student request form](docs/screenshots/student-request-form.png)
 ![Approval review view](docs/screenshots/approval-view.png)
-```
+``` -->
 
 ## Demo access
 
@@ -290,6 +290,6 @@ Do not publish personal accounts, production credentials, or real users' passwor
 - The current frontend Socket.io client URL is hard-coded to `http://localhost:5000`; update it for a non-local deployment.
 - The backend package's test command is currently a placeholder; no automated test suite is defined in the supplied package configuration.
 
-## License
+<!-- ## License
 
-No license file was present in the supplied repository archive. Add a `LICENSE` file if you intend to distribute this project under an open-source license.
+No license file was present in the supplied repository archive. Add a `LICENSE` file if you intend to distribute this project under an open-source license. -->
